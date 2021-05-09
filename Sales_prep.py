@@ -32,4 +32,4 @@ test['date_block_num']=34
 sales=sales.append(test)
 
 sales=sales.loc[sales['item_category_id'].isin(test['item_category_id'])]
-sales.to_hdf("Inputs/Total_shop_cat_translated.hdf",key='df')
+sales.to_hdf("Inputs/sales.hdf",key='df')
