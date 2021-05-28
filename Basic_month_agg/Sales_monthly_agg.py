@@ -16,6 +16,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import time
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 def downcast_dtypes(df):
         '''

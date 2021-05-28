@@ -82,7 +82,7 @@ outdated_items = sales_by_item_id[sales_by_item_id.loc[:,'27':].sum(axis=1)==0]
 print('Outdated items:', len(outdated_items))
 
 print('Outdated items in test set:', len(test[test['item_id'].isin(outdated_items['item_id'])]))
-
+   
 outdated_test_items=test[test['item_id'].isin(outdated_items['item_id'])]
 outdated_test_items['open']=0
 outdated_test_items.set_index('ID').to_csv("Outdated_test_items.csv")
