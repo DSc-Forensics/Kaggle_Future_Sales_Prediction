@@ -69,6 +69,8 @@ X_test =  all_data.loc[all_data['date_block_num'] == last_block].drop('target', 
 y_train = all_data.loc[all_data['date_block_num'] <  last_block, 'target'].clip(0,20).values
 y_test =  all_data.loc[all_data['date_block_num'] == last_block, 'target'].clip(0,20).values
 
+
+
 del all_data
 gc.collect()
 
