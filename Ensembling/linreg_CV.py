@@ -17,6 +17,7 @@ import gc
 from sklearn.metrics import mean_squared_error as mse
 
 from statsmodels.regression import linear_model
+from sklearn.preprocessing import MinMaxScaler
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -24,14 +25,10 @@ warnings.filterwarnings("ignore")
 import time
 
 os.chdir("C:/Users/PC/Desktop/Programming/Kaggle/1C_Sales/Train_ensemble_out")
-
-for file in os.listdir():
-    data=pd.read_parquet(file)
-    data=data[data['date_block_num']<28]
-    data.to_parquet(file,compression='gzip')
     
 def run_regr(all_data,sales_by_item_id,item_infos,st_mth=21,end_mth=34,num_outdated=6,train_speed='fast',plot=False):
-
+    scaler = MinMaxScaler()
+    
     if train_speed=='fast':
         lrate=0.04
         niter=100
@@ -42,10 +39,13 @@ def run_regr(all_data,sales_by_item_id,item_infos,st_mth=21,end_mth=34,num_outda
         lrate=0.0004
         niter=5000
         
-    
+    last_block=21
     for last_block in range(st_mth,end_mth):
         #last_block = 33
         print(last_block)
+        
+        all_data.fillna(0,inplace=True)
+        all_data.replace([np.inf, -np.inf], np.nan, inplace=True)
         
         X_train = all_data.loc[all_data['date_block_num'] <  last_block].drop(['target','Pred_target'], axis=1)
         X_test =  all_data.loc[all_data['date_block_num'] ==  last_block].drop(['target','Pred_target'], axis=1)

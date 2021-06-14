@@ -23,18 +23,19 @@ import time
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import OneHotEncoder
 
-def run_xg(all_data,sales_by_item_id,item_infos,st_mth=21,end_mth=34,train_speed='slow',num_outdated=6,onehot=False,plot=False,out_dump=False):
-    
+def run_xg(all_data,sales_by_item_id,item_infos,st_mth=21,end_mth=34,train_speed='fast',num_outdated=6,\
+           onehot=False,plot=False,out_dump=False,_depth=7,_subsample=0.6,niter=100,lrate=0.04,logged=False,train_ensemble=False):
+    """
     if train_speed=='fast':
         num_steps=100
     else:
         num_steps=200
-    
+    """
     if 'city' in all_data.columns and 'Broad_cat' in all_data.columns:
         all_data.drop(['city','Broad_cat'],axis=1,inplace=True)
     if onehot:
         enc = OneHotEncoder(handle_unknown='ignore')
-        enc_df = pd.DataFrame(enc.fit_transform(all_data[['shop_id','item_category_id']]).toarray())
+        enc_df = pd.DataFrame(enc.fit_transform(all_data[['item_category_id','supercategory_id','platform_id','seasonal']]).toarray())
         all_data=all_data.join(enc_df)
         
         for col in enc_df:
@@ -46,24 +47,34 @@ def run_xg(all_data,sales_by_item_id,item_infos,st_mth=21,end_mth=34,train_speed
     for last_block in range(st_mth,end_mth):
         #last_block = 33
         print(last_block)
-        train = xgb.DMatrix(all_data.loc[all_data['date_block_num'] <  last_block].drop(['target','Pred_target','shop_id','item_category_id'], axis=1), label=all_data.loc[all_data['date_block_num'] <  last_block, 'target'].clip(0,20).values)
-        test= xgb.DMatrix(all_data.loc[all_data['date_block_num'] ==  last_block].drop(['target','Pred_target','shop_id','item_category_id'], axis=1), label=all_data.loc[all_data['date_block_num'] ==  last_block, 'target'].clip(0,20).values)
+        train = xgb.DMatrix(all_data.loc[all_data['date_block_num'] <  last_block].drop(['target','Pred_target','item_category_id'], axis=1), label=all_data.loc[all_data['date_block_num'] <  last_block, 'target'].clip(0,20).values)
+        test= xgb.DMatrix(all_data.loc[all_data['date_block_num'] ==  last_block].drop(['target','Pred_target','item_category_id'], axis=1), label=all_data.loc[all_data['date_block_num'] ==  last_block, 'target'].clip(0,20).values)
         
         y_train = all_data.loc[all_data['date_block_num'] <  last_block, 'target'].clip(0,20).values
         y_test =  all_data.loc[all_data['date_block_num'] ==  last_block, 'target'].clip(0,20).values
         
+        if logged:
+            y_train2 = y_train.copy()
+            y_test2 = y_test.copy()
+            y_train = np.log(y_train+1)
+            y_test =  np.log(y_test+1)
+        
         param = {
-        'eta': 0.04,
+        'eta': lrate,
         'nthread':8,
-        'max_depth': 12,  
+        'max_depth': _depth,  
         'objective': 'reg:squarederror',
-        'colsample_bytree': 0.3}
-        steps=100
+        'colsample_bytree': 0.6,'subsample':_subsample}
+        steps=niter
         
         model = xgb.train(param, train, steps)
 
         pred_lgb = model.predict(test)
         pred_train=model.predict(train)
+        
+        if logged:
+            pred_lgb=np.exp(pred_lgb)-1
+            pred_train=np.exp(pred_train)-1
         
         """
         Hyperparameter tuning
@@ -101,10 +112,17 @@ def run_xg(all_data,sales_by_item_id,item_infos,st_mth=21,end_mth=34,train_speed
         if out_dump:
             model.dump_model('dump.raw.txt')
         
-        print('R-squared for TRAIN - %f' % r2_score(y_train, pred_train))
-        print('RMSE for TRAIN - %f' % mse(y_train, pred_train,squared=False))
-        print('R-squared for CV - %f' % r2_score(y_test, pred_lgb))
-        print('RMSE for CV - %f' % mse(y_test, pred_lgb,squared=False))
+        if logged:
+            print('R-squared for TRAIN - %f' % r2_score(y_train2, pred_train))
+            print('RMSE for TRAIN - %f' % mse(y_train2, pred_train,squared=False))
+            print('R-squared for CV - %f' % r2_score(y_test2, pred_lgb))
+            print('RMSE for CV - %f' % mse(y_test2, pred_lgb,squared=False))
+        
+        else:
+            print('R-squared for TRAIN - %f' % r2_score(y_train, pred_train))
+            print('RMSE for TRAIN - %f' % mse(y_train, pred_train,squared=False))
+            print('R-squared for CV - %f' % r2_score(y_test, pred_lgb))
+            print('RMSE for CV - %f' % mse(y_test, pred_lgb,squared=False))
         
         all_data.loc[all_data['date_block_num'] == last_block,'Pred_target']=pred_lgb.values
         del y_train,y_test

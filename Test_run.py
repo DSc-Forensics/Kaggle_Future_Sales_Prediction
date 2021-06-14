@@ -107,7 +107,7 @@ params = {
 }    
     
 model = lgb.train(lgb_params, lgb.Dataset(X_train, label=y_train,categorical_feature=['item_category_id',\
-'Broad_cat','city','supercategory_id','platform_id','seasonal']), niter)
+'Broad_cat','city','supercategory_id','platform_id','seasonal']), 100)
     
 pred_lgb = model.predict(X_test)
 pred_train=model.predict(X_train)
@@ -129,14 +129,31 @@ sub['item_cnt_month'].mean()
 #simple_sub=pd.read_csv("Subs/slow_6rollmean_bomb_simple_sub_bigdata_clipped.csv")
 sub=sub.merge(test,on='ID')
 
-sub=pd.merge(sub,out_test_items,how='left',on=['ID','shop_id','item_id'])
+sales=pd.read_hdf("Inputs/Total_shop_cat_translated_v2.hdf",key='df')
+
+sales_by_item_id = sales[sales['date_block_num']<34].pivot_table(index=['item_id'],values=['item_cnt_day'], 
+                                        columns='date_block_num', aggfunc=np.sum, fill_value=0).reset_index()
+sales_by_item_id.columns = sales_by_item_id.columns.droplevel().map(str)
+sales_by_item_id = sales_by_item_id.reset_index(drop=True).rename_axis(None, axis=1)
+sales_by_item_id.columns.values[0] = 'item_id'
+
+del sales
+gc.collect()
+
+num_outdated=9
+
+outdated_items = sales_by_item_id[sales_by_item_id.loc[:,str(last_block-num_outdated):str(last_block-1)].sum(axis=1)==0]
+outdated_items = outdated_items[outdated_items.loc[:,'0':str(last_block-1)].sum(axis=1)>0]
+
+sub.loc[sub['item_id'].isin(outdated_items['item_id']),'item_cnt_month']=0
+#sub=pd.merge(sub,out_test_items,how='left',on=['ID','shop_id','item_id'])
 
 sub2=sub.copy()
 sub2['item_cnt_month']=np.where(sub2['open']==sub2['open'],0,sub2['item_cnt_month'])
 
 sub2['item_cnt_month'].mean()
 
-sub2.set_index('ID')['item_cnt_month'].to_csv("Subs/slow_moretime_tfidf_rollmeaned_nobc_simple_sub_smalldata_clipped.csv")
+sub2.set_index('ID')['item_cnt_month'].to_csv("Subs/slow_check_simple_sub_smalldata_clipped.csv")
 
 """
 bestargs=np.argsort(model.feature_importance)
