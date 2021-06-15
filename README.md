@@ -8,7 +8,7 @@ Please note the sequence to go through the code in the folders is as follows-;
 
 1. Preprocessing
 2. Monthly Aggregation (performed in 2 ways and thus repo contains 2 folders- one for each method)
-3. Ensembling (Still Work In Progress)
+3. Ensembling 
 4. Test Run
 
 Or you can peek at the complete pipeline in 1 notebook-> "Complete_Pred_Pipeline.ipynb".
