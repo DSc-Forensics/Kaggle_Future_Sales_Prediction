@@ -59,5 +59,14 @@ last_block=34
 niter=100
 lr=0.04
 
-for past_out in [4,5,6,7,8]:
-    run_lgbm(all_data.copy(),sales_by_item_id,item_infos,st_mth=28,end_mth=34,num_outdated=past_out,return_data=False,niter=niter,lrate=lr)
+city_cols=[]
+for col in all_data.columns:
+    if 'city' in col:
+        city_cols.append(col)
+        
+all_data.drop(columns=city_cols,inplace=True)
+
+for past_out in [6]:
+    run_lgbm(all_data.copy(),sales_by_item_id,item_infos,st_mth=28,end_mth=34,num_outdated=past_out,return_data=False,\
+    niter=niter,lrate=lr,cat_cols=['item_category_id','Broad_cat','supercategory_id','platform_id'\
+                        ,'seasonal'])

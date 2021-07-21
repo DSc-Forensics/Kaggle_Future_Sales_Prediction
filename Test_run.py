@@ -56,6 +56,13 @@ last_block=34
 
 all_data.drop(['item_id','shop_id'],axis=1,inplace=True)
 
+city_cols=[]
+for col in all_data.columns:
+    if 'city' in col:
+        city_cols.append(col)
+        
+all_data.drop(columns=city_cols,inplace=True)
+
 #del all_data['item_id']
 X_train = all_data.loc[all_data['date_block_num'] <  last_block].drop('target', axis=1)
 X_test =  all_data.loc[all_data['date_block_num'] == last_block].drop('target', axis=1)
@@ -86,7 +93,7 @@ lgb_params = {'feature_fraction': 0.75,
                'bagging_freq':1,
                'verbose':0,
                'num_iterations':niter,
-               'categorical_feature':['name:item_category_id','name:city',\
+               'categorical_feature':['name:item_category_id',\
                                       'name:Broad_cat','name:platform_id','name:supercategory_id','name:seasonal']}
 
 params = {
@@ -102,12 +109,12 @@ params = {
     "subsample": 0.6,
     "subsample_freq": 5,
     "n_estimators": 8000,
-    'categorical_feature':['name:item_category_id','name:shop_id','name:city',\
+    'categorical_feature':['name:item_category_id',\
                                       'name:Broad_cat','name:platform_id','name:supercategory_id','name:seasonal']
 }    
     
 model = lgb.train(lgb_params, lgb.Dataset(X_train, label=y_train,categorical_feature=['item_category_id',\
-'Broad_cat','city','supercategory_id','platform_id','seasonal']), 100)
+'Broad_cat','supercategory_id','platform_id','seasonal']), 100)
     
 pred_lgb = model.predict(X_test)
 pred_train=model.predict(X_train)
@@ -140,20 +147,20 @@ sales_by_item_id.columns.values[0] = 'item_id'
 del sales
 gc.collect()
 
-num_outdated=9
+num_outdated=6
 
 outdated_items = sales_by_item_id[sales_by_item_id.loc[:,str(last_block-num_outdated):str(last_block-1)].sum(axis=1)==0]
 outdated_items = outdated_items[outdated_items.loc[:,'0':str(last_block-1)].sum(axis=1)>0]
 
 sub.loc[sub['item_id'].isin(outdated_items['item_id']),'item_cnt_month']=0
-#sub=pd.merge(sub,out_test_items,how='left',on=['ID','shop_id','item_id'])
+sub=pd.merge(sub,out_test_items,how='left',on=['ID','shop_id','item_id'])
 
 sub2=sub.copy()
 sub2['item_cnt_month']=np.where(sub2['open']==sub2['open'],0,sub2['item_cnt_month'])
 
 sub2['item_cnt_month'].mean()
 
-sub2.set_index('ID')['item_cnt_month'].to_csv("Subs/slow_check_simple_sub_smalldata_clipped.csv")
+sub2.set_index('ID')['item_cnt_month'].to_csv("Subs/slow_nocity_sub_smalldata_clipped.csv")
 
 """
 bestargs=np.argsort(model.feature_importance)

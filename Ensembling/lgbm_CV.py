@@ -26,7 +26,8 @@ import time
 
 def run_lgbm(all_data,sales_by_item_id,item_infos,st_mth=21,end_mth=34,onehot=False,num_outdated=6,\
 train_speed='fast',plot=False,_depth=7,_subsample=0.6,lrate=0.04,niter=100,return_data=True,logged=False,diffed=False,\
-diff_lag=1,train_ensemble=False):
+diff_lag=1,train_ensemble=False,cat_cols=['item_category_id','Broad_cat','city','supercategory_id','platform_id'\
+                        ,'seasonal']):
     
     if onehot:
         print("No onehot to work here")
@@ -73,11 +74,9 @@ diff_lag=1,train_ensemble=False):
                        'verbose':0,
                        'lambda_l2':3,
                        'num_iterations':niter,
-                       'categorical_feature':['item_category_id','Broad_cat','city','supercategory_id','platform_id'\
-                        ,'seasonal'],'subsample':_subsample}
+                       'categorical_feature':cat_cols,'subsample':_subsample}
         
-        model = lgb.train(lgb_params, lgb.Dataset(X_train, label=y_train,categorical_feature=['item_category_id',\
-        'Broad_cat','city','supercategory_id','platform_id','seasonal']), niter)
+        model = lgb.train(lgb_params, lgb.Dataset(X_train, label=y_train,categorical_feature=cat_cols), niter)
         
         pred_lgb = model.predict(X_test)
         pred_train=model.predict(X_train)
